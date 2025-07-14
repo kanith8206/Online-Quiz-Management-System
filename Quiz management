@@ -1,1 +1,261 @@
+import java.util.*;
+
+public class OnlineQuizSystem {
+    public static void main(String[] args) {
+        QuizManager quizManager = new QuizManager();
+        Scanner scanner = new Scanner(System.in);
+
+        while (true) {
+            if (quizManager.getCurrentUser() == null) {
+                System.out.println("\nOnline Quiz Management System");
+                System.out.println("1. Login");
+                System.out.println("2. Exit");
+                System.out.print("Choose option: ");
+                int choice = scanner.nextInt();
+                scanner.nextLine(); // consume newline
+
+                if (choice == 1) {
+                    System.out.print("Username: ");
+                    String username = scanner.nextLine();
+                    System.out.print("Password: ");
+                    String password = scanner.nextLine();
+
+                    if (!quizManager.login(username, password)) {
+                        System.out.println("Invalid username or password!");
+                    }
+                } else if (choice == 2) {
+                    System.out.println("Exiting...");
+                    break;
+                }
+            } else {
+                System.out.println("\nWelcome, " + quizManager.getCurrentUser().getUsername() + "!");
+                System.out.println("1. Take a quiz");
+                System.out.println("2. View my scores");
+                System.out.println("3. Logout");
+                System.out.print("Choose option: ");
+                int choice = scanner.nextInt();
+                scanner.nextLine(); // consume newline
+
+                if (choice == 1) {
+                    quizManager.displayAvailableQuizzes();
+                    System.out.print("Enter quiz ID to take: ");
+                    String quizId = scanner.nextLine();
+                    quizManager.takeQuiz(quizId);
+                } else if (choice == 2) {
+                    quizManager.getCurrentUser().viewScores();
+                } else if (choice == 3) {
+                    quizManager.logout();
+                }
+            }
+        }
+        scanner.close();
+    }
+}
+
+class Question {
+    private String questionText;
+    private List<String> options;
+    private int correctAnswer;
+
+    public Question(String questionText, List<String> options, int correctAnswer) {
+        this.questionText = questionText;
+        this.options = options;
+        this.correctAnswer = correctAnswer;
+    }
+
+    public String getQuestionText() {
+        return questionText;
+    }
+
+    public List<String> getOptions() {
+        return options;
+    }
+
+    public int getCorrectAnswer() {
+        return correctAnswer;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(questionText).append("\n");
+        for (int i = 0; i < options.size(); i++) {
+            sb.append((i + 1) + ". " + options.get(i)).append("\n");
+        }
+        return sb.toString();
+    }
+}
+
+class Quiz {
+    private List<Question> questions;
+    private String title;
+    private int currentQuestionIndex;
+    private int score;
+
+    public Quiz(String title) {
+        this.title = title;
+        this.questions = new ArrayList<>();
+        this.currentQuestionIndex = 0;
+        this.score = 0;
+    }
+
+    public void addQuestion(Question question) {
+        questions.add(question);
+    }
+
+    public Question getCurrentQuestion() {
+        if (currentQuestionIndex < questions.size()) {
+            return questions.get(currentQuestionIndex);
+        }
+        return null;
+    }
+
+    public boolean nextQuestion() {
+        currentQuestionIndex++;
+        return currentQuestionIndex < questions.size();
+    }
+
+    public void checkAnswer(int answer) {
+        if (answer == questions.get(currentQuestionIndex - 1).getCorrectAnswer()) {
+            score++;
+        }
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public int getTotalQuestions() {
+        return questions.size();
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void reset() {
+        currentQuestionIndex = 0;
+        score = 0;
+    }
+}
+
+class User {
+    private String username;
+    private String password;
+    private Map<String, Integer> quizScores;
+
+    public User(String username, String password) {
+        this.username = username;
+        this.password = password;
+        this.quizScores = new HashMap<>();
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public boolean authenticate(String password) {
+        return this.password.equals(password);
+    }
+
+    public void addQuizScore(String quizTitle, int score) {
+        quizScores.put(quizTitle, score);
+    }
+
+    public void viewScores() {
+        System.out.println("\nQuiz Scores for " + username + ":");
+        for (Map.Entry<String, Integer> entry : quizScores.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
+    }
+}
+
+class QuizManager {
+    private Map<String, Quiz> quizzes;
+    private Map<String, User> users;
+    private User currentUser;
+
+    public QuizManager() {
+        this.quizzes = new HashMap<>();
+        this.users = new HashMap<>();
+        initializeSampleData();
+    }
+
+    private void initializeSampleData() {
+        // Add sample users
+        users.put("admin", new User("admin", "admin123"));
+        users.put("student", new User("student", "student123"));
+
+        // Add sample quizzes
+        Quiz javaQuiz = new Quiz("Java Basics");
+        javaQuiz.addQuestion(new Question("What is the size of int in Java?",
+                Arrays.asList("2 bytes", "4 bytes", "8 bytes", "Depends on system"), 2));
+        javaQuiz.addQuestion(new Question("Which keyword is used for inheritance in Java?",
+                Arrays.asList("extends", "inherits", "implements", "derives"), 1));
+        quizzes.put("java", javaQuiz);
+
+        Quiz mathQuiz = new Quiz("Mathematics");
+        mathQuiz.addQuestion(new Question("What is 2 + 2?",
+                Arrays.asList("3", "4", "5", "6"), 2));
+        mathQuiz.addQuestion(new Question("What is the square root of 16?",
+                Arrays.asList("2", "4", "8", "16"), 2));
+        quizzes.put("math", mathQuiz);
+    }
+
+    public boolean login(String username, String password) {
+        User user = users.get(username);
+        if (user != null && user.authenticate(password)) {
+            currentUser = user;
+            return true;
+        }
+        return false;
+    }
+
+    public void logout() {
+        currentUser = null;
+    }
+
+    public User getCurrentUser() {
+        return currentUser;
+    }
+
+    public void takeQuiz(String quizId) {
+        Quiz quiz = quizzes.get(quizId);
+        if (quiz == null) {
+            System.out.println("Quiz not found!");
+            return;
+        }
+
+        quiz.reset();
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("\nStarting Quiz: " + quiz.getTitle());
+        System.out.println("----------------------------");
+
+        while (true) {
+            Question question = quiz.getCurrentQuestion();
+            if (question == null) break;
+
+            System.out.println(question);
+            System.out.print("Your answer (1-" + question.getOptions().size() + "): ");
+            int answer = scanner.nextInt();
+
+            quiz.nextQuestion();
+            quiz.checkAnswer(answer);
+        }
+
+        System.out.println("\nQuiz completed!");
+        System.out.println("Your score: " + quiz.getScore() + "/" + quiz.getTotalQuestions());
+        
+        currentUser.addQuizScore(quiz.getTitle(), quiz.getScore());
+    }
+
+    public void displayAvailableQuizzes() {
+        System.out.println("\nAvailable Quizzes:");
+        for (Map.Entry<String, Quiz> entry : quizzes.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue().getTitle() + 
+                             " (" + entry.getValue().getTotalQuestions() + " questions)");
+        }
+    }
+}
 
